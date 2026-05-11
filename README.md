@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="GIFs/rollout_1_500demo_100epoch_true.gif" width="720"/>
+  <img src="GIFs/rollout_1_1000demo_1800epoch.gif" width="720"/>
 </p>
 ---
 
@@ -55,8 +55,8 @@ Verified:
 - The official annotated G1 locomanipulation dataset was downloaded.
 - Mimic successfully generated G1 locomanipulation demonstrations.
 - A generated demo can be replayed and exported as GIF/MP4 without robot flipping.
-- A robomimic BC-RNN policy was trained with 500 Mimic-generated demonstrations for 100 epochs.
-- The trained policy achieved 11/30 successful rollouts in a preliminary evaluation and a successful rollout GIF was exported.
+- A robomimic BC-RNN policy was trained with 1000 Mimic-generated demonstrations for 1800 epochs.
+- The trained policy achieved 48/50 successful rollouts in a preliminary evaluation and a successful rollout GIF was exported.
 
 This repository currently focuses on **environment reproduction, generated demonstration replay, and preliminary policy rollout reproduction**.
 ---
@@ -139,61 +139,7 @@ The corrected replay path is:
 - replay raw 32-D `actions`,
 - avoid feeding `processed_actions` into `env.step()`.
 
----
 
-### Smoke Test
-
-Run from the Isaac Lab root directory:
-
-```bash
-cd /root/autodl-tmp/IsaacLab
-source /root/miniconda3/etc/profile.d/conda.sh
-conda activate /root/autodl-tmp/conda_envs/isaacsim-5.1.0
-
-unset LD_LIBRARY_PATH
-export TERM=xterm
-export OMNI_KIT_ACCEPT_EULA=YES
-
-./isaaclab.sh -p -u scripts/g1_pickplace_smoke.py \
-  --task Isaac-PickPlace-FixedBaseUpperBodyIK-G1-Abs-v0 \
-  --num_envs 1 \
-  --headless \
-  --enable_pinocchio
-```
-
-Expected output:
-
-```text
-[INFO] reset ok
-[INFO] action_dim: 28
-[INFO] step 0 ok
-[INFO] step 5 ok
-[INFO] step 10 ok
-[INFO] step 15 ok
-```
-
----
-
-### Generated Demo Replay
-
-```bash
-cd /root/autodl-tmp/IsaacLab
-source /root/miniconda3/etc/profile.d/conda.sh
-conda activate /root/autodl-tmp/conda_envs/isaacsim-5.1.0
-
-unset LD_LIBRARY_PATH
-export TERM=xterm
-export OMNI_KIT_ACCEPT_EULA=YES
-
-./isaaclab.sh -p scripts/g1_locomanip_replay_mp4.py \
-  --device cpu \
-  --dataset_file /root/autodl-tmp/IsaacLab/datasets/generated_dataset_g1_locomanip_20.hdf5 \
-  --demo_key demo_0 \
-  --fps 50 \
-  --output /root/autodl-tmp/IsaacLab/videos/g1_locomanip_demo_0.mp4 \
-  --headless \
-  --enable_pinocchio
-```
 ---
 
 ### Roadmap
@@ -205,7 +151,7 @@ export OMNI_KIT_ACCEPT_EULA=YES
 - [x] Download official annotated G1 locomanipulation dataset.
 - [x] Generate G1 locomanipulation demonstrations with Mimic.
 - [x] Replay generated demonstration without robot flipping.
-- [x] Train a robomimic BC-RNN policy with 500 Mimic-generated demonstrations.
+- [x] Train a robomimic BC-RNN policy with 1000 Mimic-generated demonstrations.
 - [x] Export successful trained policy rollout GIF.
 
 
@@ -267,9 +213,9 @@ https://github.com/isaac-sim/IsaacLab
 
 当前策略结果：
 
-- 数据集：500 条 Mimic 生成的 demonstration。
-- 训练轮数：100 epochs。
-- 初步评估：30 次 rollout 中成功 11 次。
+- 数据集：1000 条 Mimic 生成的 demonstration。
+- 训练轮数：1800 epochs。
+- 初步评估：50 次 rollout 中成功 48 次。
 - 任务：`Isaac-PickPlace-Locomanipulation-G1-Abs-v0`。
 
 此前 generated demonstration replay 也已验证。回放调试中确认，正确路径是使用 32 维原始 `actions`，恢复 `initial_state`，并在数据集对应的 Mimic 环境中执行。
@@ -342,61 +288,6 @@ patches/fix_pinkik_solver_quadprog.patch
 - 回放 32 维原始 `actions`；
 - 不把 `processed_actions` 传给 `env.step()`。
 
----
-
-### Smoke Test
-
-在 Isaac Lab 根目录运行：
-
-```bash
-cd /root/autodl-tmp/IsaacLab
-source /root/miniconda3/etc/profile.d/conda.sh
-conda activate /root/autodl-tmp/conda_envs/isaacsim-5.1.0
-
-unset LD_LIBRARY_PATH
-export TERM=xterm
-export OMNI_KIT_ACCEPT_EULA=YES
-
-./isaaclab.sh -p -u scripts/g1_pickplace_smoke.py \
-  --task Isaac-PickPlace-FixedBaseUpperBodyIK-G1-Abs-v0 \
-  --num_envs 1 \
-  --headless \
-  --enable_pinocchio
-```
-
-期望输出：
-
-```text
-[INFO] reset ok
-[INFO] action_dim: 28
-[INFO] step 0 ok
-[INFO] step 5 ok
-[INFO] step 10 ok
-[INFO] step 15 ok
-```
-
----
-
-### Generated Demo 回放
-
-```bash
-cd /root/autodl-tmp/IsaacLab
-source /root/miniconda3/etc/profile.d/conda.sh
-conda activate /root/autodl-tmp/conda_envs/isaacsim-5.1.0
-
-unset LD_LIBRARY_PATH
-export TERM=xterm
-export OMNI_KIT_ACCEPT_EULA=YES
-
-./isaaclab.sh -p scripts/g1_locomanip_replay_mp4.py \
-  --device cpu \
-  --dataset_file /root/autodl-tmp/IsaacLab/datasets/generated_dataset_g1_locomanip_20.hdf5 \
-  --demo_key demo_0 \
-  --fps 50 \
-  --output /root/autodl-tmp/IsaacLab/videos/g1_locomanip_demo_0.mp4 \
-  --headless \
-  --enable_pinocchio
-```
 
 ---
 
@@ -409,5 +300,5 @@ export OMNI_KIT_ACCEPT_EULA=YES
 - [x] 下载官方 G1 locomanipulation annotated dataset。
 - [x] 使用 Mimic 生成 G1 locomanipulation demonstration。
 - [x] 成功回放 generated demonstration，机器人不再乱翻滚。
-- [x] 使用 500 条 Mimic 生成 demonstration 训练 robomimic BC-RNN 策略。
+- [x] 使用 1000 条 Mimic 生成 demonstration 训练 robomimic BC-RNN 策略。
 - [x] 导出训练后策略成功 rollout GIF。
