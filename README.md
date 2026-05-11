@@ -6,9 +6,8 @@
 </p>
 
 <p align="center">
-  <img src="GIFs/demo.gif" width="720"/>
+  <img src="GIFs/rollout_1_500demo_100epoch_true.gif" width="720"/>
 </p>
-
 ---
 
 ## English
@@ -39,7 +38,7 @@ NVIDIA Isaac Lab
 https://github.com/isaac-sim/IsaacLab
 ```
 
-This repository is **not a fork or mirror of Isaac Lab**. It only contains reproduction scripts, debugging notes, and minimal patches used during the reproduction process.
+
 
 ---
 
@@ -56,8 +55,10 @@ Verified:
 - The official annotated G1 locomanipulation dataset was downloaded.
 - Mimic successfully generated G1 locomanipulation demonstrations.
 - A generated demo can be replayed and exported as GIF/MP4 without robot flipping.
+- A robomimic BC-RNN policy was trained with 500 Mimic-generated demonstrations for 100 epochs.
+- The trained policy achieved 11/30 successful rollouts in a preliminary evaluation and a successful rollout GIF was exported.
 
-
+This repository currently focuses on **environment reproduction, generated demonstration replay, and preliminary policy rollout reproduction**.
 ---
 
 ### Demo
@@ -204,8 +205,9 @@ export OMNI_KIT_ACCEPT_EULA=YES
 - [x] Download official annotated G1 locomanipulation dataset.
 - [x] Generate G1 locomanipulation demonstrations with Mimic.
 - [x] Replay generated demonstration without robot flipping.
-- [ ] Train a robomimic BC-RNN policy.
-- [ ] Export trained policy rollout videos.
+- [x] Train a robomimic BC-RNN policy with 500 Mimic-generated demonstrations.
+- [x] Export successful trained policy rollout GIF.
+
 
 ---
 
@@ -255,19 +257,22 @@ https://github.com/isaac-sim/IsaacLab
 - 已使用 Mimic 成功生成 G1 locomanipulation demonstration。
 - 已成功回放 generated demo，并导出 GIF/MP4，机器人不再乱翻滚。
 
-当前仓库主要处于**环境复现、调试和 generated demonstration 回放阶段**，还没有包含训练好的 pick-place 策略。
+当前仓库主要处于**环境复现、generated demonstration 回放和初步策略 rollout 复现阶段**。
 
 ---
 
 ### 演示
 
-上方 GIF 展示的是一条 generated G1 locomanipulation demonstration 的回放。
+上方 GIF 展示的是训练后 robomimic BC-RNN 策略的一次成功 rollout。
 
-注意：
+当前策略结果：
 
-- 这不是训练后策略的 rollout，而是 demonstration replay。
-- 回放时使用 32 维原始 `actions`，恢复 `initial_state`，并在数据集对应的 Mimic 环境中执行。
-- `processed_actions` 是内部展开后的动作目标，不能直接传给 `env.step()`。
+- 数据集：500 条 Mimic 生成的 demonstration。
+- 训练轮数：100 epochs。
+- 初步评估：30 次 rollout 中成功 11 次。
+- 任务：`Isaac-PickPlace-Locomanipulation-G1-Abs-v0`。
+
+此前 generated demonstration replay 也已验证。回放调试中确认，正确路径是使用 32 维原始 `actions`，恢复 `initial_state`，并在数据集对应的 Mimic 环境中执行。
 
 ---
 
@@ -404,5 +409,5 @@ export OMNI_KIT_ACCEPT_EULA=YES
 - [x] 下载官方 G1 locomanipulation annotated dataset。
 - [x] 使用 Mimic 生成 G1 locomanipulation demonstration。
 - [x] 成功回放 generated demonstration，机器人不再乱翻滚。
-- [ ] 训练 robomimic BC-RNN 策略。
-- [ ] 导出训练后策略 rollout 视频。
+- [x] 使用 500 条 Mimic 生成 demonstration 训练 robomimic BC-RNN 策略。
+- [x] 导出训练后策略成功 rollout GIF。
