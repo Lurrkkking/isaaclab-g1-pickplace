@@ -1,0 +1,8 @@
+python: 3.11.15 (main, Mar 11 2026, 17:20:07) [GCC 14.3.0]
+torch: 2.7.0+cu128
+qpsolvers: 4.12.0
+available_solvers: ['daqp', 'quadprog']
+pink: 3.1.0
+pinocchio ok
+quadprog ok
+daqp: no __version__
