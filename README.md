@@ -188,47 +188,11 @@ export OMNI_KIT_ACCEPT_EULA=YES
   --device cpu \
   --dataset_file /root/autodl-tmp/IsaacLab/datasets/generated_dataset_g1_locomanip_20.hdf5 \
   --demo_key demo_0 \
-  --fps 10 \
+  --fps 50 \
   --output /root/autodl-tmp/IsaacLab/videos/g1_locomanip_demo_0.mp4 \
   --headless \
   --enable_pinocchio
 ```
-
----
-
-### Repository Structure
-
-```text
-isaaclab-g1-pickplace/
-├── README.md
-├── GIFs/
-│   └── demo.gif
-├── scripts/
-│   ├── g1_pickplace_smoke.py
-│   ├── g1_pickplace_video.py
-│   ├── g1_locomanip_replay_mp4.py
-│   └── g1_locomanip_first_step_diag.py
-├── patches/
-│   └── fix_pinkik_solver_quadprog.patch
-└── docs/
-```
-
----
-
-### Not Included
-
-This repository does not include:
-
-- Isaac Lab source code,
-- Isaac Sim assets,
-- USD assets,
-- HDF5 demonstration datasets,
-- checkpoints,
-- generated training datasets,
-- trained policies.
-
-Large assets and generated outputs should be kept outside this repository.
-
 ---
 
 ### Roadmap
@@ -423,46 +387,11 @@ export OMNI_KIT_ACCEPT_EULA=YES
   --device cpu \
   --dataset_file /root/autodl-tmp/IsaacLab/datasets/generated_dataset_g1_locomanip_20.hdf5 \
   --demo_key demo_0 \
-  --fps 10 \
+  --fps 50 \
   --output /root/autodl-tmp/IsaacLab/videos/g1_locomanip_demo_0.mp4 \
   --headless \
   --enable_pinocchio
 ```
-
----
-
-### 仓库结构
-
-```text
-isaaclab-g1-pickplace/
-├── README.md
-├── GIFs/
-│   └── demo.gif
-├── scripts/
-│   ├── g1_pickplace_smoke.py
-│   ├── g1_pickplace_video.py
-│   ├── g1_locomanip_replay_mp4.py
-│   └── g1_locomanip_first_step_diag.py
-├── patches/
-│   └── fix_pinkik_solver_quadprog.patch
-└── docs/
-```
-
----
-
-### 不包含的内容
-
-本仓库不包含：
-
-- Isaac Lab 源码；
-- Isaac Sim 资产；
-- USD 资产；
-- HDF5 demonstration 数据；
-- checkpoint；
-- 生成的训练数据集；
-- 已训练策略。
-
-大文件、资产和实验输出应放在仓库外部。
 
 ---
 
