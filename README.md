@@ -5,18 +5,31 @@
   <a href="#中文"><b>中文</b></a>
 </p>
 
+<p align="center">
+  <img src="GIFs/demo.gif" width="720"/>
+</p>
+
 ---
 
 ## English
 
 ### Overview
 
-This repository records my reproduction and debugging process for the **G1 fixed-base upper-body pick-place task** in **NVIDIA Isaac Lab**.
+This repository records my reproduction and debugging process for the **G1 pick-place tasks in NVIDIA Isaac Lab**.
 
-The reproduced task is:
+The work currently covers two parts:
+
+1. Reproducing and debugging the fixed-base upper-body G1 pick-place environment:
 
 ```text
 Isaac-PickPlace-FixedBaseUpperBodyIK-G1-Abs-v0
+```
+
+2. Replaying generated G1 locomanipulation demonstrations from the official Isaac Lab Mimic pipeline:
+
+```text
+Isaac-Locomanipulation-G1-Abs-Mimic-v0
+Isaac-PickPlace-Locomanipulation-G1-Abs-v0
 ```
 
 This project is based on the official NVIDIA Isaac Lab project:
@@ -26,7 +39,7 @@ NVIDIA Isaac Lab
 https://github.com/isaac-sim/IsaacLab
 ```
 
-This repository is **not a fork or mirror of Isaac Lab**. It only contains reproduction scripts, debugging notes, and minimal patches used to make the task run reliably on a headless RTX 4090 server.
+This repository is **not a fork or mirror of Isaac Lab**. It only contains reproduction scripts, debugging notes, and minimal patches used during the reproduction process.
 
 ---
 
@@ -36,14 +49,26 @@ Verified:
 
 - Isaac Sim 5.1 runs on a headless RTX 4090 server.
 - Isaac Lab is installed from source.
-- The task `Isaac-PickPlace-FixedBaseUpperBodyIK-G1-Abs-v0` can be registered.
-- The environment can be created, reset, and stepped.
-- The action dimension is verified as 28.
-- G1 robot visual is confirmed to exist in the USD stage.
-- Viewport-based video export works.
-- A hold-current-pose action is used for stable visualization.
+- `Isaac-PickPlace-FixedBaseUpperBodyIK-G1-Abs-v0` can be registered, reset, and stepped.
+- The fixed-base upper-body action dimension is verified as 28.
+- PinkIK solver compatibility was fixed by switching from `daqp` to `quadprog`.
+- Stable G1 visualization was exported in headless mode.
+- The official annotated G1 locomanipulation dataset was downloaded.
+- Mimic successfully generated G1 locomanipulation demonstrations.
+- A generated demo can be replayed and exported as GIF/MP4 without robot flipping.
 
-This repository currently focuses on **environment reproduction and debugging**. It does not yet contain a trained pick-place policy.
+
+---
+
+### Demo
+
+The GIF above shows a replayed generated G1 locomanipulation demonstration.
+
+Important note:
+
+- This is a **generated demonstration replay**, not a trained policy rollout.
+- The replay uses raw 32-D `actions`, restores `initial_state`, and runs in the dataset's Mimic environment.
+- `processed_actions` are internal expanded action targets and should not be fed into `env.step()`.
 
 ---
 
@@ -82,8 +107,6 @@ The default PinkIK QP solver caused this error:
 solve() got an unexpected keyword argument 'primal_start'
 ```
 
-The root cause was an incompatibility between `qpsolvers`, its DAQP adapter, and the installed `daqp` Python binding.
-
 The minimal fix was to switch the PinkIK solver from:
 
 ```python
@@ -104,25 +127,16 @@ patches/fix_pinkik_solver_quadprog.patch
 
 ---
 
-#### 4. Video export issue
+#### 4. Generated demo replay
 
-Using Gymnasium `RecordVideo` with `render_mode="rgb_array"` did not reliably capture the full G1 robot visual.
+For generated G1 locomanipulation demos, replaying in the wrong environment or using `processed_actions` can cause the robot to flip.
 
-The workaround is to use Isaac Sim viewport capture instead of the Gymnasium video wrapper.
+The corrected replay path is:
 
----
-
-#### 5. Zero action is not a no-op
-
-This task uses an **absolute IK action space**. A zero action does not mean “hold current pose”.
-
-For visualization, the script constructs a hold-current-pose action after reset:
-
-- current left wrist world position and quaternion,
-- current right wrist world position and quaternion,
-- current hand joint positions.
-
-This gives a valid 28-dimensional idle action and keeps the G1 robot visible during video export.
+- use the dataset's Mimic environment,
+- restore `initial_state`,
+- replay raw 32-D `actions`,
+- avoid feeding `processed_actions` into `env.step()`.
 
 ---
 
@@ -159,7 +173,7 @@ Expected output:
 
 ---
 
-### Video Export
+### Generated Demo Replay
 
 ```bash
 cd /root/autodl-tmp/IsaacLab
@@ -170,15 +184,14 @@ unset LD_LIBRARY_PATH
 export TERM=xterm
 export OMNI_KIT_ACCEPT_EULA=YES
 
-./isaaclab.sh -p -u scripts/g1_pickplace_video.py \
-  --task Isaac-PickPlace-FixedBaseUpperBodyIK-G1-Abs-v0 \
-  --num_envs 1 \
+./isaaclab.sh -p scripts/g1_locomanip_replay_mp4.py \
+  --device cpu \
+  --dataset_file /root/autodl-tmp/IsaacLab/datasets/generated_dataset_g1_locomanip_20.hdf5 \
+  --demo_key demo_0 \
+  --fps 10 \
+  --output /root/autodl-tmp/IsaacLab/videos/g1_locomanip_demo_0.mp4 \
   --headless \
-  --enable_cameras \
-  --enable_pinocchio \
-  --rendering_mode performance \
-  --num_steps 10 \
-  --video_length 10
+  --enable_pinocchio
 ```
 
 ---
@@ -188,9 +201,13 @@ export OMNI_KIT_ACCEPT_EULA=YES
 ```text
 isaaclab-g1-pickplace/
 ├── README.md
+├── GIFs/
+│   └── demo.gif
 ├── scripts/
 │   ├── g1_pickplace_smoke.py
-│   └── g1_pickplace_video.py
+│   ├── g1_pickplace_video.py
+│   ├── g1_locomanip_replay_mp4.py
+│   └── g1_locomanip_first_step_diag.py
 ├── patches/
 │   └── fix_pinkik_solver_quadprog.patch
 └── docs/
@@ -207,7 +224,7 @@ This repository does not include:
 - USD assets,
 - HDF5 demonstration datasets,
 - checkpoints,
-- generated videos,
+- generated training datasets,
 - trained policies.
 
 Large assets and generated outputs should be kept outside this repository.
@@ -220,11 +237,11 @@ Large assets and generated outputs should be kept outside this repository.
 - [x] Register and launch the G1 fixed-base upper-body pick-place task.
 - [x] Fix PinkIK solver compatibility.
 - [x] Export stable G1 visualization video.
-- [ ] Analyze the 28-dimensional absolute IK action space.
-- [ ] Reproduce the official demonstration / replay pipeline.
-- [ ] Generate or replay HDF5 demonstration data.
-- [ ] Train a robomimic behavior cloning policy.
-- [ ] Export policy rollout videos.
+- [x] Download official annotated G1 locomanipulation dataset.
+- [x] Generate G1 locomanipulation demonstrations with Mimic.
+- [x] Replay generated demonstration without robot flipping.
+- [ ] Train a robomimic BC-RNN policy.
+- [ ] Export trained policy rollout videos.
 
 ---
 
@@ -232,12 +249,21 @@ Large assets and generated outputs should be kept outside this repository.
 
 ### 项目简介
 
-本仓库记录我对 **NVIDIA Isaac Lab 官方 G1 fixed-base upper-body pick-place 任务** 的复现与调试过程。
+本仓库记录我对 **NVIDIA Isaac Lab 中 G1 pick-place 相关任务** 的复现与调试过程。
 
-复现目标任务为：
+目前包含两部分：
+
+1. 复现和调试 fixed-base upper-body G1 pick-place 环境：
 
 ```text
 Isaac-PickPlace-FixedBaseUpperBodyIK-G1-Abs-v0
+```
+
+2. 复现 Isaac Lab 官方 Mimic 流程生成的 G1 locomanipulation demonstration 回放：
+
+```text
+Isaac-Locomanipulation-G1-Abs-Mimic-v0
+Isaac-PickPlace-Locomanipulation-G1-Abs-v0
 ```
 
 本项目基于 NVIDIA 官方 Isaac Lab：
@@ -247,7 +273,7 @@ NVIDIA Isaac Lab
 https://github.com/isaac-sim/IsaacLab
 ```
 
-本仓库**不是 Isaac Lab 的 fork 或完整镜像**，只保存复现过程中使用的脚本、调试记录和少量补丁。
+
 
 ---
 
@@ -257,14 +283,27 @@ https://github.com/isaac-sim/IsaacLab
 
 - Isaac Sim 5.1 可以在无桌面的 RTX 4090 服务器上运行。
 - Isaac Lab 源码环境可以正常启动。
-- `Isaac-PickPlace-FixedBaseUpperBodyIK-G1-Abs-v0` 任务可以成功注册。
-- 环境可以正常创建、reset 和 step。
-- 动作维度确认为 28。
-- G1 robot visual 已确认存在于 USD stage 中。
-- 已实现稳定的 viewport 视频导出脚本。
-- 已使用 hold-current-pose action 导出稳定的 G1 可视化视频。
+- `Isaac-PickPlace-FixedBaseUpperBodyIK-G1-Abs-v0` 可以成功注册、reset 和 step。
+- fixed-base upper-body 动作维度确认为 28。
+- 已通过将 PinkIK solver 从 `daqp` 改为 `quadprog` 修复求解器兼容问题。
+- 已在 headless 模式下稳定导出 G1 可视化结果。
+- 已下载官方 G1 locomanipulation annotated dataset。
+- 已使用 Mimic 成功生成 G1 locomanipulation demonstration。
+- 已成功回放 generated demo，并导出 GIF/MP4，机器人不再乱翻滚。
 
-当前仓库主要处于**环境复现与调试阶段**，还没有包含训练好的 pick-place 策略。
+当前仓库主要处于**环境复现、调试和 generated demonstration 回放阶段**，还没有包含训练好的 pick-place 策略。
+
+---
+
+### 演示
+
+上方 GIF 展示的是一条 generated G1 locomanipulation demonstration 的回放。
+
+注意：
+
+- 这不是训练后策略的 rollout，而是 demonstration replay。
+- 回放时使用 32 维原始 `actions`，恢复 `initial_state`，并在数据集对应的 Mimic 环境中执行。
+- `processed_actions` 是内部展开后的动作目标，不能直接传给 `env.step()`。
 
 ---
 
@@ -303,8 +342,6 @@ PinkIK 默认 QP solver 在当前环境中会报错：
 solve() got an unexpected keyword argument 'primal_start'
 ```
 
-根因是 `qpsolvers` 的 DAQP adapter 和当前安装的 `daqp` Python binding 接口不兼容。
-
 最小修复方式是把 PinkIK solver 从：
 
 ```python
@@ -325,25 +362,16 @@ patches/fix_pinkik_solver_quadprog.patch
 
 ---
 
-#### 4. 视频导出问题
+#### 4. Generated demo 回放问题
 
-使用 Gymnasium 的 `RecordVideo` 和 `render_mode="rgb_array"` 时，导出视频里不能稳定显示完整 G1 机器人。
+对于 generated G1 locomanipulation demo，如果使用错误环境回放，或者把 `processed_actions` 直接传给 `env.step()`，机器人会乱翻滚。
 
-解决方法是绕过 `RecordVideo`，改用 Isaac Sim 的 viewport capture 方式导出图像和视频。
+修正后的回放路径是：
 
----
-
-#### 5. zero action 不是静止动作
-
-该任务使用的是**绝对 IK 动作空间**，因此全 0 action 不是“不动”，而是会被解释为错误的绝对手腕目标和手指目标。
-
-为了稳定可视化，视频脚本在 reset 后从当前机器人状态构造 hold-current-pose action：
-
-- 左手腕当前世界坐标位置和四元数；
-- 右手腕当前世界坐标位置和四元数；
-- 当前手部关节位置。
-
-这样可以得到一个合理的 28 维 idle action，使 G1 在视频中保持完整可见。
+- 使用数据集对应的 Mimic 环境；
+- 恢复 `initial_state`；
+- 回放 32 维原始 `actions`；
+- 不把 `processed_actions` 传给 `env.step()`。
 
 ---
 
@@ -380,7 +408,7 @@ export OMNI_KIT_ACCEPT_EULA=YES
 
 ---
 
-### 视频导出
+### Generated Demo 回放
 
 ```bash
 cd /root/autodl-tmp/IsaacLab
@@ -391,15 +419,14 @@ unset LD_LIBRARY_PATH
 export TERM=xterm
 export OMNI_KIT_ACCEPT_EULA=YES
 
-./isaaclab.sh -p -u scripts/g1_pickplace_video.py \
-  --task Isaac-PickPlace-FixedBaseUpperBodyIK-G1-Abs-v0 \
-  --num_envs 1 \
+./isaaclab.sh -p scripts/g1_locomanip_replay_mp4.py \
+  --device cpu \
+  --dataset_file /root/autodl-tmp/IsaacLab/datasets/generated_dataset_g1_locomanip_20.hdf5 \
+  --demo_key demo_0 \
+  --fps 10 \
+  --output /root/autodl-tmp/IsaacLab/videos/g1_locomanip_demo_0.mp4 \
   --headless \
-  --enable_cameras \
-  --enable_pinocchio \
-  --rendering_mode performance \
-  --num_steps 10 \
-  --video_length 10
+  --enable_pinocchio
 ```
 
 ---
@@ -409,9 +436,13 @@ export OMNI_KIT_ACCEPT_EULA=YES
 ```text
 isaaclab-g1-pickplace/
 ├── README.md
+├── GIFs/
+│   └── demo.gif
 ├── scripts/
 │   ├── g1_pickplace_smoke.py
-│   └── g1_pickplace_video.py
+│   ├── g1_pickplace_video.py
+│   ├── g1_locomanip_replay_mp4.py
+│   └── g1_locomanip_first_step_diag.py
 ├── patches/
 │   └── fix_pinkik_solver_quadprog.patch
 └── docs/
@@ -428,7 +459,7 @@ isaaclab-g1-pickplace/
 - USD 资产；
 - HDF5 demonstration 数据；
 - checkpoint；
-- 生成的视频；
+- 生成的训练数据集；
 - 已训练策略。
 
 大文件、资产和实验输出应放在仓库外部。
@@ -441,8 +472,8 @@ isaaclab-g1-pickplace/
 - [x] 注册并启动 G1 fixed-base upper-body pick-place 任务。
 - [x] 修复 PinkIK solver 兼容问题。
 - [x] 导出稳定的 G1 可视化视频。
-- [ ] 分析 28 维绝对 IK 动作空间。
-- [ ] 复现官方 demonstration / replay 流程。
-- [ ] 生成或回放 HDF5 demonstration 数据。
-- [ ] 训练 robomimic 行为克隆策略。
-- [ ] 导出策略 rollout 视频。
+- [x] 下载官方 G1 locomanipulation annotated dataset。
+- [x] 使用 Mimic 生成 G1 locomanipulation demonstration。
+- [x] 成功回放 generated demonstration，机器人不再乱翻滚。
+- [ ] 训练 robomimic BC-RNN 策略。
+- [ ] 导出训练后策略 rollout 视频。

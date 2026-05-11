@@ -75,6 +75,8 @@ from isaaclab.utils.datasets import EpisodeData, HDF5DatasetFileHandler
 if args_cli.enable_pinocchio:
     import isaaclab_tasks.manager_based.locomanipulation.pick_place  # noqa: F401
     import isaaclab_tasks.manager_based.manipulation.pick_place  # noqa: F401
+    import isaaclab_mimic.envs  # noqa: F401
+    import isaaclab_mimic.envs.pinocchio_envs  # noqa: F401
 
 import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils.parse_cfg import parse_env_cfg
@@ -111,6 +113,8 @@ def compare_states(state_from_dataset, runtime_state, runtime_env_index) -> (boo
             for state_name in runtime_state[asset_type][asset_name].keys():
                 runtime_asset_state = runtime_state[asset_type][asset_name][state_name][runtime_env_index]
                 dataset_asset_state = state_from_dataset[asset_type][asset_name][state_name]
+                if dataset_asset_state.ndim > runtime_asset_state.ndim:
+                    dataset_asset_state = dataset_asset_state[0]
                 if len(dataset_asset_state) != len(runtime_asset_state):
                     raise ValueError(f"State shape of {state_name} for asset {asset_name} don't match")
                 for i in range(len(dataset_asset_state)):
@@ -168,12 +172,16 @@ def main():
     env_cfg.terminations = {}
 
     # create environment from loaded config
-    env = gym.make(args_cli.task, cfg=env_cfg).unwrapped
+    env = gym.make(env_name, cfg=env_cfg).unwrapped
 
-    teleop_interface = Se3Keyboard(Se3KeyboardCfg(pos_sensitivity=0.1, rot_sensitivity=0.1))
-    teleop_interface.add_callback("N", play_cb)
-    teleop_interface.add_callback("B", pause_cb)
-    print('Press "B" to pause and "N" to resume the replayed actions.')
+    teleop_interface = None
+    if not args_cli.headless:
+        teleop_interface = Se3Keyboard(Se3KeyboardCfg(pos_sensitivity=0.1, rot_sensitivity=0.1))
+        teleop_interface.add_callback("N", play_cb)
+        teleop_interface.add_callback("B", pause_cb)
+        print('Press "B" to pause and "N" to resume the replayed actions.')
+    else:
+        print("[INFO] Headless mode detected. Skipping Se3Keyboard initialization.")
 
     # Determine if state validation should be conducted
     state_validation_enabled = False
@@ -188,9 +196,13 @@ def main():
     else:
         idle_action = torch.zeros(env.action_space.shape)
 
+    print(f"[INFO] Replay action source: actions")
+    print(f"[INFO] Environment action dim: {env.action_space.shape[-1]}")
+
     # reset before starting
     env.reset()
-    teleop_interface.reset()
+    if teleop_interface is not None:
+        teleop_interface.reset()
 
     # simulate environment -- run everything in inference mode
     episode_names = list(dataset_file_handler.get_episode_names())
