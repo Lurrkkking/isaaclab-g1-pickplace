@@ -101,7 +101,8 @@ Verified:
 - A low-dimensional ACT policy was trained and deployed back to IsaacLab for closed-loop rollout.
 - ACT trained for 500 epochs achieved 50/50 successful rollouts in a preliminary 50-rollout evaluation.
 - Under hard object-pose perturbation, the original ACT rollout success rate dropped to 16%.
-- Failure-driven targeted Mimic data aggregation improved the hard-perturbation success rate to 42% with targeted Mimic ×10 and 84% after local jitter augmentation.
+- Failure-driven targeted Mimic data aggregation improved the hard-perturbation success rate to 42% with targeted Mimic ×10 and 60% after expanding the targeted set with local jitter augmentation.
+- A random Mimic-success augmentation baseline under the same perturbation scale reached 38%, but collecting usable random demos was much more time- and compute-consuming because many random reset poses were also unsolved by Mimic.
 
 This repository focuses on **G1 locomanipulation imitation learning reproduction, policy comparison, and targeted robustness augmentation**, rather than proposing a full new algorithm.
 
@@ -159,9 +160,10 @@ Preliminary hard-perturbation robustness result:
 | Nominal rollout | 98% |
 | Original rollout under hard perturbation | 16% |
 | Targeted Mimic ×10 | 42% |
-| Targeted Mimic + local jitter augmentation | 84% |
+| Random Mimic-success augmentation | 38% |
+| Targeted Mimic + local jitter augmentation | 60% |
 
-These numbers are treated as simulation-side engineering validation of the targeted augmentation pipeline.
+These numbers are treated as simulation-side engineering validation of the targeted augmentation pipeline. The random Mimic-success baseline uses random object-pose cases followed by Mimic-success filtering, without ACT-failure filtering. In practice, this random collection was much less efficient: a large fraction of randomly sampled reset poses could not be solved by Mimic, so collecting usable demonstrations required substantially more sampling time and compute.
 
 ---
 
@@ -286,6 +288,7 @@ The main deployment checks were:
 - [x] Build ACT-failed / Mimic-succeeded targeted demonstration sets.
 - [x] Add local jitter augmentation around successful targeted cases.
 - [x] Evaluate hard object-pose perturbation robustness after targeted dataset augmentation.
+- [x] Compare with a random Mimic-success augmentation baseline and analyze its sampling cost.
 - [ ] Evaluate robustness under broader object / target / physics randomization.
 
 ---
@@ -351,7 +354,8 @@ https://github.com/isaac-sim/IsaacLab
 - 已训练 low-dimensional ACT，并接回 IsaacLab 完成闭环 rollout。
 - ACT 训练 500 epochs 后，在一次 50-rollout 初步评估中达到 50/50 成功。
 - 在 hard object-pose perturbation 下，原始 ACT rollout 成功率下降到 16%。
-- 通过 ACT failed / Mimic succeeded 样本筛选与局部 jitter 扩增，hard perturbation 成功率从 16% 提升到 84%。
+- 通过 ACT failed / Mimic succeeded 样本筛选与局部 jitter 扩增，hard perturbation 成功率从 16% 提升到 60%。
+- 在相同扰动尺度下，随机采样 object pose 并只保留 Mimic success 的 baseline 达到 38%，但随机采样中大量 case 连 Mimic 也无法完成，因此有效数据极其稀疏，收集过程明显更耗时、更消耗算力。
 
 本仓库主要关注 **G1 移动操作模仿学习流程复现、策略对比与失败定向数据增强探索**，不声称提出完整的新算法。
 
@@ -409,9 +413,10 @@ https://github.com/isaac-sim/IsaacLab
 | Nominal rollout | 98% |
 | Original rollout under hard perturbation | 16% |
 | Targeted Mimic ×10 | 42% |
-| Targeted Mimic + local jitter augmentation | 84% |
+| Random Mimic-success augmentation | 38% |
+| Targeted Mimic + local jitter augmentation | 60% |
 
-这些结果主要用于说明：基于策略失败分布的 targeted dataset augmentation 可以有效提升困难物体初始位姿条件下的仿真鲁棒性。
+这些结果主要用于说明：基于策略失败分布的 targeted dataset augmentation 可以有效提升困难物体初始位姿条件下的仿真鲁棒性。随机 Mimic-success baseline 作为对照：它不经过 ACT failure 过滤，而是在相同扰动尺度下随机采样 object pose，再只保留 Mimic 成功样本。实际收集过程中，大量随机 case 连 Mimic 也无法完成，因此有效 demonstration 极其稀疏，数据收集非常耗时且算力开销更高。
 
 ---
 
@@ -536,4 +541,5 @@ ACT 部署时主要检查：
 - [x] 构建 ACT failed / Mimic succeeded targeted demonstration 集合。
 - [x] 围绕 Mimic 成功样本做局部 jitter 扩增。
 - [x] 评估 targeted dataset augmentation 对 hard perturbation 成功率的提升。
+- [x] 增加 random Mimic-success augmentation baseline，并分析随机采样的数据收集成本。
 - [ ] 在更大范围的物体、目标位置和物理参数扰动下评估策略鲁棒性。
