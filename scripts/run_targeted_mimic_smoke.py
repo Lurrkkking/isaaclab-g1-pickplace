@@ -20,6 +20,7 @@ parser.add_argument("--max_success_demos", type=int, default=None)
 parser.add_argument("--success_only", action="store_true", default=False)
 parser.add_argument("--max_abs_xy_offset", type=float, default=None)
 parser.add_argument("--max_abs_yaw_offset_deg", type=float, default=None)
+parser.add_argument("--skip_existing_output", action="store_true", default=False)
 parser.add_argument("--enable_pinocchio", action="store_true", default=False)
 parser.add_argument("--keep_failed", action="store_true", default=True)
 AppLauncher.add_app_launcher_args(parser)
@@ -63,6 +64,16 @@ def load_targeted_cases(path: pathlib.Path) -> list[dict[str, Any]]:
         case_copy["targeted_case_index"] = case_idx
         indexed_cases.append(case_copy)
     return indexed_cases
+
+
+def load_json_if_exists(path: pathlib.Path) -> dict[str, Any] | None:
+    if not path.is_file():
+        return None
+    with path.open("r", encoding="utf-8") as f:
+        payload = json.load(f)
+    if not isinstance(payload, dict):
+        raise TypeError(f"Expected dict JSON at {path}, got {type(payload)}")
+    return payload
 
 
 def case_passes_filters(case: dict[str, Any]) -> bool:
@@ -194,6 +205,23 @@ def main() -> None:
 
     output_file = pathlib.Path(args_cli.output_file)
     output_file.parent.mkdir(parents=True, exist_ok=True)
+    smoke_summary_path = output_file.with_suffix(".smoke_summary.json")
+    summary_path = output_file.with_suffix(".summary.json")
+
+    if args_cli.skip_existing_output:
+        existing_summary = load_json_if_exists(smoke_summary_path)
+        existing_success_count = 0
+        if existing_summary is not None:
+            existing_success_count = int(
+                existing_summary.get("success_count", existing_summary.get("mimic_success_count", 0))
+            )
+        if output_file.exists() and existing_success_count > 0:
+            print(
+                f"[INFO] skip_existing_output enabled; reusing existing shard output={output_file} "
+                f"success_count={existing_success_count}",
+                flush=True,
+            )
+            return
 
     keep_failed = bool(args_cli.keep_failed)
     if args_cli.success_only:
@@ -244,7 +272,8 @@ def main() -> None:
 
             print(
                 f"[INFO] targeted_case={case_idx} global_index={case['targeted_case_index']} "
-                f"base_failure_id={case['base_failure_id']} jitter_id={case['jitter_id']}",
+                f"base_failure_id={case.get('base_failure_id', case.get('case_id', 'unknown'))} "
+                f"jitter_id={case.get('jitter_id', 0)}",
                 flush=True,
             )
             task = event_loop.create_task(run_one_case(env, env_reset_queue, env_action_queue, data_generator, success_term, case))
@@ -273,11 +302,14 @@ def main() -> None:
                 {
                     "case_index": case_idx,
                     "targeted_case_index": int(case["targeted_case_index"]),
-                    "base_failure_id": case["base_failure_id"],
-                    "rollout_idx": int(case["rollout_idx"]),
-                    "seed": int(case["seed"]),
-                    "jitter_id": case["jitter_id"],
+                    "case_id": case.get("case_id"),
+                    "base_failure_id": case.get("base_failure_id"),
+                    "rollout_idx": int(case.get("rollout_idx", case_idx)),
+                    "seed": int(case.get("seed", 0)),
+                    "jitter_id": int(case.get("jitter_id", 0)),
                     "success": case_success,
+                    "source": case.get("source"),
+                    "source_case_origin": case.get("source_case_origin"),
                     "source_failure_reason": case.get("source_failure_reason"),
                     "object_xy_offset": case.get("object_xy_offset"),
                     "object_yaw_offset_deg": case.get("object_yaw_offset_deg"),
@@ -295,33 +327,38 @@ def main() -> None:
                 flush=True,
             )
     finally:
-        smoke_summary_path = output_file.with_suffix(".smoke_summary.json")
-        with smoke_summary_path.open("w", encoding="utf-8") as f:
-            json.dump(
-                {
-                    "output_file": str(output_file),
-                    "targeted_cases_file": str(args_cli.targeted_cases),
-                    "input_source_file": str(args_cli.input_file),
-                    "success_only": bool(args_cli.success_only),
-                    "keep_failed": keep_failed,
-                    "start_case": int(args_cli.start_case),
-                    "num_cases": int(args_cli.num_cases),
-                    "max_success_demos": args_cli.max_success_demos,
-                    "max_abs_xy_offset": args_cli.max_abs_xy_offset,
-                    "max_abs_yaw_offset_deg": args_cli.max_abs_yaw_offset_deg,
-                    "total_filtered_cases": len(filtered_cases),
-                    "total_selected_cases": len(selected_cases),
-                    "total_attempted_cases": total_attempted_cases,
-                    "mimic_success_count": mimic_success_count,
-                    "mimic_failed_count": mimic_failed_count,
-                    "successful_case_indices": successful_case_indices,
-                    "failed_case_indices": failed_case_indices,
-                    "cases": smoke_records,
-                },
-                f,
-                indent=2,
-            )
+        success_rate = float(mimic_success_count / total_attempted_cases) if total_attempted_cases > 0 else 0.0
+        summary_payload = {
+            "output_file": str(output_file),
+            "output_hdf5": str(output_file),
+            "targeted_cases_file": str(args_cli.targeted_cases),
+            "input_source_file": str(args_cli.input_file),
+            "success_only": bool(args_cli.success_only),
+            "keep_failed": keep_failed,
+            "start_case": int(args_cli.start_case),
+            "num_cases": int(args_cli.num_cases),
+            "max_success_demos": args_cli.max_success_demos,
+            "max_abs_xy_offset": args_cli.max_abs_xy_offset,
+            "max_abs_yaw_offset_deg": args_cli.max_abs_yaw_offset_deg,
+            "skip_existing_output": bool(args_cli.skip_existing_output),
+            "total_filtered_cases": len(filtered_cases),
+            "total_selected_cases": len(selected_cases),
+            "total_attempted_cases": total_attempted_cases,
+            "attempted_cases": total_attempted_cases,
+            "mimic_success_count": mimic_success_count,
+            "success_count": mimic_success_count,
+            "mimic_failed_count": mimic_failed_count,
+            "failed_count": mimic_failed_count,
+            "success_rate": success_rate,
+            "successful_case_indices": successful_case_indices,
+            "failed_case_indices": failed_case_indices,
+            "cases": smoke_records,
+        }
+        for path in [smoke_summary_path, summary_path]:
+            with path.open("w", encoding="utf-8") as f:
+                json.dump(summary_payload, f, indent=2)
         print(f"[INFO] smoke_summary={smoke_summary_path}", flush=True)
+        print(f"[INFO] summary={summary_path}", flush=True)
         env.close()
 
 

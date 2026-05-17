@@ -75,7 +75,12 @@ tests/
 **/gelsight_r15_data/*
 
 frames/
-# *.png
+*.png
 *.mp4
 
 logs_g1_pickplace/
+
+# Keep README figures
+!GIFs/
+!GIFs/*.png
+!GIFs/*.gif
